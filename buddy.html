@@ -1,82 +1,114 @@
 <head>
-  <title>buddy</title>
-<script type="text/javascript">
+    <meta http-equiv="content-type" content="text/html; charset=utf-8">
 
-    var clientId = '757859387382-vb4q7m2v5crqjg2tm1gvd1t5pj9ovo1c.apps.googleusercontent.com';
-
-    var apiKey = 'AIzaSyB-xWo6qxFMF8i84iuhC4fUStlC4hNwWkY';
-
-    var scopes = 'https://spreadsheets.google.com/feeds';
-
-    function handleClientLoad() {
-        // Step 2: Reference the API key
-        console.log("Hello!");
-        gapi.client.setApiKey(apiKey);
-        window.setTimeout(checkAuth,1);
-        console.log("Hello!");
-    }
-
-    function checkAuth() {
-        gapi.auth.authorize({client_id: clientId, scope: scopes, immediate: true}, handleAuthResult);
-    }
-
-    function handleAuthResult(authResult) {
-        var authorizeButton = document.getElementById('authorize-button');
-        if (authResult && !authResult.error) {
-            authorizeButton.style.visibility = 'hidden';
-            makeApiCall();
-        } else {
-            authorizeButton.style.visibility = '';
-            authorizeButton.onclick = handleAuthClick;
-        }
-    }
-
-    function handleAuthClick(event) {
-        // Step 3: get authorization to use private data
-        gapi.auth.authorize({client_id: clientId, scope: scopes, immediate: false}, handleAuthResult);
-        return false;
-    }
-
-    // Load the API and make an API call.  Display the results on the screen.
-    function makeApiCall() {
-        // Step 4: Load the Google+ API
-        gapi.client.load('sheets', 'v3').then(function() {
-            // Step 5: Assemble the API request
-            var request = gapi.client.plus.people.get({
-            'userId': 'me'
-            });
-            // Step 6: Execute the API request
-            request.then(function(resp) {
-            var heading = document.createElement('h4');
-            var image = document.createElement('img');
-            image.src = resp.result.image.url;
-            heading.appendChild(image);
-            heading.appendChild(document.createTextNode(resp.result.displayName));
-
-            document.getElementById('content').appendChild(heading);
-            }, function(reason) {
-            console.log('Error: ' + reason.result.error.message);
-            });
-        });
-    }
-</script>
-<script type="text/javascript" src="https://apis.google.com/js/client.js?onload=handleClientLoad"></script>
+    <title>Buddy</title>
 </head>
 <body>
-<!--Add a button for the user to click to initiate auth sequence -->
-<button id="authorize-button" style="visibility: hidden">Authorize</button>
-</body>
 
-<template name="hello">
-  <button>Click Me</button>
-  <p>You've pressed the button {{counter}} times.</p>
-  {{#each buddies}}
-    {{> buddy}}
-  {{/each}}
+</body>
+<template name="ApplicationLayout">
+    <header>
+        <h1>{{title}}</h1>
+        <p><a href="/">Home</a></p>
+    </header>
+
+    <article>
+        {{> yield}}
+    </article>
+
+    <footer>
+        <p>This is a footer</p>
+    </footer>
 </template>
 
-<template name="buddy">
-  <p>{{hello}}</p>
+<template name="Home">
+    <p>Dashboard</p>
+    <a href="/new">Create new buddy pairing</a>
+</template>
+
+
+<template name="New">
+    <label for="locals">Locals</label><textarea name="locals" rows="8" cols="40"></textarea>
+    <p><a id="new-locals">Update &rarr;</a></p>
+    <label for="internationals">Internationals</label><textarea name="internationals" rows="8" cols="40"></textarea>
+    <p><a id="new-internationals">Update &rarr;</a></p>
+    <a class="btn btn-large" href="{{keysLink}}">Continue</a>
+    {{> Responses}}
+</template>
+
+<template name="Keys">
+    <h2>Local questions</h2>
+    <form role="form" id="local-key" accept-charset="utf-8">
+        {{#each localQuestions}}
+        <div class="form-group">
+            <label for="{{this}}">{{this}}</label>
+            <select class="local-key" name="{{this}}" id="{{this}}">
+                {{#each localOptions this}}
+                    <option value="{{key}}" selected={{isSelected}}>{{key}}</option>
+                {{/each}}
+            </select>
+        </div>
+        {{/each}}
+    <p><input type="submit" value="Save"></p>
+    </form>
+    <h2>International questions</h2>
+    <form role="form" id="international-key" accept-charset="utf-8">
+        {{#each internationalQuestions this}}
+        <div class="form-group">
+            <label for="{{this}}">{{this}}</label>
+            <select class="international-key" name="{{this}}" id="{{this}}">
+                {{#each internationalOptions this}}
+                <option value="{{key}}" selected={{isSelected}}>{{key}}</option>
+                {{/each}}
+            </select>
+        </div>
+        {{/each}}
+    <p><input type="submit" value="Save"></p>
+    </form>
+</template>
+
+<template name="selectKeys">
+</template>
+
+<template name="Responses">
+    <h2>Locals</h2>
+    {{#each locals}}
+        {{> ResponseTable}}
+    {{else}}
+        <p>Use the textarea to add some data</p>
+    {{/each}}
+    <h2>Internationals</h2>
+    {{#each internationals}}
+        {{> ResponseTable}}
+    {{else}}
+        <p>Use the textarea to add some data</p>
+    {{/each}}
+    <p>You're using id {{matchingId}}</p>
+</template>
+
+<template name="ResponseTable">
+    <div class="table-responsive">
+        <table class="table table-condensed">
+            <thead>
+                <tr>
+                    {{#each data.header}}
+                        <th>{{this}}</th>
+                    {{/each}}
+                </tr>
+            </thead>
+            <tbody>
+                {{#each data.responses}}
+                <tr>
+                    {{#each this}}
+                        <td>
+                            {{this}}
+                        </td>
+                    {{/each}}
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+    </div>
 </template>
 
 
