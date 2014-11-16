@@ -26,6 +26,47 @@
     <a href="/new">Create new buddy pairing</a>
 </template>
 
+<template name="Responses">
+    <h2>Locals</h2>
+    {{#each local}}
+        {{> ResponseTable}}
+    {{else}}
+        <p>Use the textarea to add some data</p>
+    {{/each}}
+    <h2>Internationals</h2>
+    {{#each international}}
+        {{> ResponseTable}}
+    {{else}}
+        <p>Use the textarea to add some data</p>
+    {{/each}}
+    <p>You're using id {{matchingId}}</p>
+</template>
+
+<template name="ResponseTable">
+    <div class="table-responsive">
+        <table class="table table-condensed">
+            <thead>
+                <tr>
+                    {{#each data.header}}
+                        <th>{{this}}</th>
+                    {{/each}}
+                </tr>
+            </thead>
+            <tbody>
+                {{#each data.responses}}
+                <tr>
+                    {{#each this}}
+                        <td>
+                            {{this}}
+                        </td>
+                    {{/each}}
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+    </div>
+</template>
+
 
 <template name="New">
     <label for="local">Locals</label><textarea name="local" rows="8" cols="40"></textarea>
@@ -77,45 +118,30 @@
     </div>
 </template>
 
-<template name="Responses">
-    <h2>Locals</h2>
-    {{#each local}}
-        {{> ResponseTable}}
-    {{else}}
-        <p>Use the textarea to add some data</p>
+<template name="Match">
+    <p>Responses</p>
+    {{#each responses.local}}
+        {{firstName}}
     {{/each}}
-    <h2>Internationals</h2>
-    {{#each international}}
-        {{> ResponseTable}}
-    {{else}}
-        <p>Use the textarea to add some data</p>
+    {{#each questions}}
+        {{> QuestionImportance}}
     {{/each}}
-    <p>You're using id {{matchingId}}</p>
 </template>
 
-<template name="ResponseTable">
-    <div class="table-responsive">
-        <table class="table table-condensed">
-            <thead>
-                <tr>
-                    {{#each data.header}}
-                        <th>{{this}}</th>
-                    {{/each}}
-                </tr>
-            </thead>
-            <tbody>
-                {{#each data.responses}}
-                <tr>
-                    {{#each this}}
-                        <td>
-                            {{this}}
-                        </td>
-                    {{/each}}
-                </tr>
-                {{/each}}
-            </tbody>
-        </table>
-    </div>
+<template name="QuestionImportance">
+    <label for={{name}}>{{name}}</label>
+    {{#with getImportance name}}
+        <input type=range min=0 max=100 value={{importance}} class="importance-slider" id={{../name}} data-id={{id}} step=1>
+        <output for=fader id=volume>{{importance}}</output>
+    {{/with}}
+</template>
+
+<template name="GoToSetup">
+    <p>You are missing data for this matching, please go to Step 1 <a href="{{setupUrl}}">here</a>.</p>
+</template>
+
+<template name="GoToKeys">
+    <p>Some keys are missing, please complete Step 2 <a href="{{keysUrl}}">here</a> before doing matching.</p>
 </template>
 
 

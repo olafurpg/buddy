@@ -1,6 +1,8 @@
 Buddies = new Mongo.Collection("buddies");
 Setup = new Mongo.Collection("setup");
 QuestionKeys = new Mongo.Collection("questionKeys");
+QuestionImportances = new Mongo.Collection("questionImportances");
+Matchings = new Mongo.Collection("matchings");
 
 function makeResponseTable (str) {
     var rows = str.split("\n");
@@ -67,6 +69,34 @@ getId = function () {
     return window.location.search.substr(3);
 }
 
+function getQuestionImportances() {
+    var qi = QuestionImportances.find({matchId: getId()}, {
+        sort: {"timestamp": -1}
+    }).fetch();
+    console.log(qi);
+    var joined = _.object(_.map(qi, function(q) {
+        return [q.question, {importance: q.importance, id: q._id}];
+    }));
+    return joined;
+}
+
+getResponses = function(type) {
+    var s = Setup.findOne({matchId: getId(), type: type}, {
+        sort: {"timestamp": -1}
+    });
+    return s;
+}
+
+getMappings = function(type) {
+    var ms = QuestionKeys.find({matchId: getId(), type: type}, {
+        sort: {"timestamp": -1},
+    }).fetch();
+    var joined = _.object(_.map(ms, function(m) {
+        return [m.question, {key: m.key, id: m._id}];
+    }));
+    return joined;
+}
+
 Router.route("/", {
     name: 'home'
 });
@@ -77,7 +107,7 @@ Router.route('/new', {
 });
 
 Router.route('/setup', {
-    controller: 'MatchingController',
+    controller: 'SetupController',
     data: function() {
         return {title: "Setup 1 - Data"};
     },
@@ -85,7 +115,7 @@ Router.route('/setup', {
 });
 
 Router.route('/keys', {
-    controller: 'MatchingController',
+    controller: 'SetupController',
     name: 'keys',
     data: function() {
         return {title: "Setup 2 - Keys"};
@@ -93,13 +123,13 @@ Router.route('/keys', {
     action: 'keys'
 });
 
-Router.route('/overview', {
+Router.route('/match', {
     controller: 'MatchingController',
     name: 'match',
     data: function() {
-        return {title: "Overview"};
+        return {title: "Setup 3 - Match"};
     },
-    action: 'overview'
+    action: 'match'
 });
 
 ApplicationController = RouteController.extend({
@@ -125,15 +155,41 @@ HomeController = ApplicationController.extend({
     }
 });
 
-MatchingController = ApplicationController.extend({
+updateQuestionImportances = function() {
+    var qi = getQuestionImportances("local");
+    Session.set("questionImportances", qi);
+}
+
+updateResponsesSession = function() {
+    console.log("on run");
+    console.log(getResponses("local"));
+    var responses = {
+        local: getResponses("local"),
+        international: getResponses("international")
+    };
+    if (_.indexOf(_.values(responses), undefined) !== -1) {
+        // TODO: We may want to link towards setup
+        return;
+    }
+    var mappings = {
+        local: getMappings("local"),
+        international: getMappings("international")
+    };
+    if (_.indexOf(_.values(mappings), undefined) !== -1) {
+        // TODO: We may want to link towards keys
+        return;
+    }
+    responses.local = makeObjFromMatrix(responses.local.data, mappings.local);
+    responses.international = makeObjFromMatrix(responses.international.data, mappings.international);
+    Session.set("responses", responses);
+}
+
+SetupController = ApplicationController.extend({
     onRun: function() {
         this.next();
     },
     setup: function () {
         this.render("New");
-    },
-    overview: function () {
-        this.render("Responses");
     },
     keys: function () {
         this.render("Keys");
@@ -142,6 +198,59 @@ MatchingController = ApplicationController.extend({
         Session.set("matchingId", getId());
     }
 });
+MatchingController = SetupController.extend({
+    data: function() {
+        return {
+            setupUrl: "/setup?m" + getId(),
+            keysUrl: "/setup?m" + getId()
+        };
+    },
+    match: function () {
+        this.render("Match", {
+            data: function() {
+                return {
+                    responses: Session.get("responses"),
+                    questions: getQuestions()
+                };
+            },
+        });
+    },
+    onRerun: function() {
+        this.next();
+    },
+    onBeforeAction: function() {
+        updateResponsesSession();
+        updateQuestionImportances();
+        var responses = Session.get("responses")
+        if (_.isUndefined(responses)) {
+            this.render("GoToSetup");
+        } else if (responses === "FIXME") {
+            this.render("GoToKeys");
+        } else {
+            this.next();
+        }
+    }
+});
+
+function makeObjFromMatrix(matrix, mappings) {
+    var header = matrix.header;
+    var responses = matrix.responses;
+    return _.map(responses, function(r, i) {
+        var row = _.map(header, function(question, j) {
+            var keyObj = mappings[question];
+            var key = keyObj.key;
+            if (!_.isString(key)) {
+                // TODO: Do something, warn user
+                key = "FIXME";
+                console.log("WARNING!! KEY MISSING for question: " + question);
+            }
+            var value = responses[i][j];
+            return [key, value];
+        });
+        return _.object(row);
+    });
+    // body...
+}
 
 if (Meteor.isClient) {
     Template.New.events({
@@ -156,11 +265,7 @@ if (Meteor.isClient) {
             local = makeResponseTable(local);
             var millis = new Date().getTime();
             Setup.insert({timestamp: millis, matchId: getId(), type: "local", data: local});
-            // window.location = "/overview?m=" + getId();
         },
-        "click #continue": function() {
-            window.location = "/overview?m=" + getId();
-        }
     });
     Template.New.helpers({
         keysLink: function() {
@@ -173,17 +278,17 @@ if (Meteor.isClient) {
         },
         localQuestions: function() {
             console.log("hello!!");
-            return getQuestions("local");
+            return getQuestionsForKeys("local");
         },
         internationalQuestions: function() {
-            return getQuestions("international");
+            return getQuestionsForKeys("international");
         },
         questions: function() {
             return "";
         }
     });
 
-    function getQuestions (type) {
+    function getQuestionsForKeys (type) {
         var header = getResponses(type);
         header = (header !== undefined) ? header.data.header : header;
         var mapping = getMappings(type);
@@ -288,22 +393,6 @@ if (Meteor.isClient) {
         return options;
     }
 
-    function getResponses(type) {
-        var s = Setup.findOne({matchId: getId(), type: type}, {
-            sort: {"timestamp": -1}
-        });
-        return s;
-    }
-
-    getMappings = function(type) {
-        var ms = QuestionKeys.find({matchId: getId(), type: type}, {
-            sort: {"timestamp": -1},
-        }).fetch();
-        var joined = _.object(_.map(ms, function(m) {
-            return [m.question, {key: m.key, id: m._id}];
-        }));
-        return joined;
-    }
 
     Template.Responses.helpers({
         local: function() {
@@ -323,7 +412,39 @@ if (Meteor.isClient) {
         },
     });
 
-    Template.ResponseTable.helpers({
+    Template.QuestionImportance.helpers({
+        getImportance: function(name) {
+            var qi = Session.get("questionImportances")
+            var importance = qi[name]
+            // GIVE ME GET OR ELSE!!!!!!!!!!!!!!!!!
+            return _.isUndefined(importance) ? {importance: 50, id: null} : importance;
+        }
+    });
+
+    Template.QuestionImportance.events({
+        "change .importance-slider": function(e) {
+            var importance = parseInt(e.target.value);
+            var id = e.target.getAttribute("data-id");
+            var question = e.target.getAttribute("id");
+            console.log(importance);
+            console.log(question);
+            console.log(id);
+            if (_.isNull(id)) {
+                QuestionImportances.insert({
+                    timestamp: new Date().getTime(),
+                    matchId: getId(),
+                    question: question,
+                    importance: importance
+                });
+                updateQuestionImportances();
+            } else {
+                QuestionImportances.update({_id: id}, {
+                    $set: {
+                        importance: importance
+                    }
+                });
+            }
+        }
     });
 
 }
