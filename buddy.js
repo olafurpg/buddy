@@ -63,7 +63,7 @@ function longestCommonSubstring(string1, string2){
     return longestCommonSubstring;
 }
 
-function getId () {
+getId = function () {
     return window.location.search.substr(3);
 }
 
@@ -151,11 +151,11 @@ if (Meteor.isClient) {
             var millis = new Date().getTime();
             Setup.insert({timestamp: millis, matchId: getId(), type: "internationals", data: internationals});
         },
-        "click #new-locals": function() {
-            var locals = $("textarea[name='locals']")[0].value;
-            locals = makeResponseTable(locals);
+        "click #new-local": function() {
+            var local = $("textarea[name='local']")[0].value;
+            local = makeResponseTable(local);
             var millis = new Date().getTime();
-            Setup.insert({timestamp: millis, matchId: getId(), type: "locals", data: locals});
+            Setup.insert({timestamp: millis, matchId: getId(), type: "local", data: local});
             // window.location = "/overview?m=" + getId();
         },
         "click #continue": function() {
@@ -172,69 +172,124 @@ if (Meteor.isClient) {
             return "/matching?m=" + getId();
         },
         localQuestions: function() {
-            var header = getResponses("locals").data.header;
-            var mapping = getMappings("local", header);
-            return {header: header, mapping: mapping};
-        },
-        internationalQuestions: function() {
-            var header = getResponses("internationals").data.header;
-            var mapping = getMappings("international", header);
-            return {header: header, mapping: mapping};
-        },
-        localOptions: function(data) {
-            console.log(data);
-            // TODO: cache selected keys
-            // TODO: cache requiredKeys
+            var header = getResponses("local");
+            header = (header !== undefined) ? header.data.header : header;
+            var mapping = getMappings("local");
+            header = _.map(header, function(h) {
+                // console.log(h);
+                var hasMapping = _.isObject(mapping[h]);
+                var id = hasMapping ? mapping[h].id : "";
+                // console.log(id);
+                var classList = hasMapping ? "glyphicon glyphicon-ok-sign" : "glyphicon glyphicon-info-sign";
+                return {question: h, hasMapping: hasMapping, classList: classList, id: id};
+            });
+            console.log(mapping["Timestamp"]);
+            console.log(header);
             var requiredKeys = getVariables();
-            return getOptions(data.question, data.mapping, requiredKeys.local);
+            return {type: "local", header: header, mapping: mapping, requiredKeys: requiredKeys.local};
         },
-        internationalOptions: function(data) {
-            var requiredKeys = getVariables();
-            return getOptions(data.question, data.mapping, requiredKeys.international);
-        },
+        // internationalQuestions: function() {
+        //     var header = getResponses("internationals");
+        //     header = (header !== undefined) ? header.data.header : header;
+        //     var mapping = getMappings("international");
+        //     return {header: header, mapping: mapping};
+        // },
+        // localOptions: function(data) {
+        //     data = data.hash;
+        //     console.log(data);
+        //     // TODO: cache selected keys
+        //     // TODO: cache requiredKeys
+        //     return getOptions(data.question, data.mapping, requiredKeys.local);
+        // },
+        // internationalOptions: function(data) {
+        //     data = data.hash;
+        //     var requiredKeys = getVariables();
+        //     var opts = getOptions(data.question, data.mapping, requiredKeys.international);
+        //     return opts;
+        // },
         questions: function() {
             return "";
         }
     });
+
+
+    Template.selectKeys.helpers({
+        getOptions: function(data) {
+            data = data.hash;
+            var opts = getOptions(data.question, data.mapping, data.requiredKeys);
+            return opts;
+        },
+    });
+
     Template.Keys.events({
-        "change select": function(e) {
-            var question = e.target.getAttribute("name");
-            var key = e.target.value;
-            var type = (e.target.classList.indexOf("local-key") === -1) ? "international" : "local";
+        "click .confirm-btn": function(e) {
+            var question = e.target.getAttribute("data-question");
+            var type = e.target.getAttribute("data-type");
+            // TODO: select only sib
+            var key = $("select[name='" + question + "']").val();
+            console.log(question);
+            console.log(type);
+            console.log(key);
             var millis = new Date().getTime();
-            keyValues = _.object(keyValues);
-            QuestionKeys.upsert({
-                type: getId(),
+            QuestionKeys.insert({
                 matchId: getId(),
-                question: question
-            }, {
                 question: question,
                 key: key,
                 timestamp: millis,
                 type: type
             });
+        },
+        "change select": function(e) {
+            var question = e.target.getAttribute("name");
+            var id = e.target.getAttribute("id");
+            var key = e.target.value;
+            var select = $(e.target);
+            console.log(id);
+            var type = (_.indexOf(e.target.classList, "local-key") === -1) ? "international" : "local";
+            var millis = new Date().getTime();
+            console.log(key);
+            if (_.isEmpty(id)) {
+                console.log("inserting");
+                QuestionKeys.insert({
+                    matchId: getId(),
+                    question: question,
+                    key: key,
+                    timestamp: millis,
+                    type: type
+                });
+            } else {
+                console.log("updating id: " + id);
+                QuestionKeys.update({
+                    _id: id,
+                }, { $set: {
+                    key: key
+                }});
+            }
         }
     });
+
+    function upsertQuestionKey (data) {
+        // body...
+    }
 
 
     function getOptions(question, mapping, keys) {
         var max = 0;
+        var doIntelligentGuess = !(_.isObject(mapping) && _.isObject(mapping[question]));
+        // console.log(question + " +++ " + doIntelligentGuess);
         var options = _.map(keys, function(key) {
-            // TODO: use longest common substring if mapping does not exist
             var isSelected = false;
             var lcs = 0;
-            if (_.isObject(mapping)) {
-                isSelected = (mapping.data[question] === key);
-            } else {
+            if (doIntelligentGuess) {
                 lcs = longestCommonSubstring(question.replace(/\s+/, "").toLowerCase(), key.toLowerCase());
+            } else {
+                isSelected = (mapping[question].key === key);
+                console.log(question + " ---- "  + mapping[question].key + " --- " + key + " __ " + isSelected);
             }
-            // console.log(question);
-            // console.log(key);
-            // console.log(lcs);
             max = Math.max(lcs, max);
             return {key: key, isSelected: isSelected, lcs: lcs};
         });
-        if (!_.isObject(mapping)) {
+        if (doIntelligentGuess) {
             options = _.map(options, function(o) {
                 o.isSelected = (o.lcs > 3 && o.lcs === max);
                 return o;
@@ -243,25 +298,26 @@ if (Meteor.isClient) {
         return options;
     }
 
-    function getResponses (type, header) {
-        var s = Setup.find({matchId: getId(), type: type}, {
-            sort: {"timestamp": -1},
-            limit: 1
-        }).fetch()[0];
+    function getResponses(type) {
+        var s = Setup.findOne({matchId: getId(), type: type}, {
+            sort: {"timestamp": -1}
+        });
         return s;
     }
 
-    function getMappings(type, header) {
-
-        return QuestionKeys.find({matchId: getId(), type: type}, {
+    getMappings = function(type) {
+        var ms = QuestionKeys.find({matchId: getId(), type: type}, {
             sort: {"timestamp": -1},
-            question: { $in: header }
-        }).fetch()[0];
+        }).fetch();
+        var joined = _.object(_.map(ms, function(m) {
+            return [m.question, {key: m.key, id: m._id}];
+        }));
+        return joined;
     }
 
     Template.Responses.helpers({
-        locals: function() {
-            return Setup.find({matchId: getId(), type: "locals"}, {
+        local: function() {
+            return Setup.find({matchId: getId(), type: "local"}, {
                 sort: {"timestamp": -1},
                 limit: 1
             });

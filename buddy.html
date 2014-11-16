@@ -28,8 +28,8 @@
 
 
 <template name="New">
-    <label for="locals">Locals</label><textarea name="locals" rows="8" cols="40"></textarea>
-    <p><a id="new-locals" class="btn">Update &rarr;</a></p>
+    <label for="local">Locals</label><textarea name="local" rows="8" cols="40"></textarea>
+    <p><a id="new-local" class="btn">Update &rarr;</a></p>
     <label for="internationals">Internationals</label><textarea name="internationals" rows="8" cols="40"></textarea>
     <p><a id="new-internationals" class="btn">Update &rarr;</a></p>
     <a class="btn btn-large" href="{{keysLink}}">Continue</a>
@@ -41,42 +41,54 @@
     <form role="form" id="local-key" accept-charset="utf-8">
         {{#with localQuestions}}
             {{#each header}}
-                <div class="form-group">
-                    <label for="{{this}}">{{this}}</label>
-                    <select class="local-key" name="{{this}}" id="{{this}}">
-                        {{#each localOptions header=this mapping=../mapping}}
-                            <option value="{{key}}" selected={{isSelected}}>{{key}}</option>
-                        {{/each}}
-                    </select>
-                </div>
+                {{> selectKeys}}
             {{/each}}
         {{/with}}
     <!-- <p><input type="submit" value="Save"></p> -->
     </form>
-    <h2>International questions</h2>
-    <form role="form" id="international-key" accept-charset="utf-8">
-        {{#with internationalQuestions}}
-            {{#each header}}
-            <div class="form-group">
-                <label for="{{this}}">{{this}}</label>
-                <select class="international-key" name="{{this}}" id="{{this}}">
-                    {{#each internationalOptions header=this mapping=../mapping}}
-                    <option value="{{key}}" selected={{isSelected}}>{{key}}</option>
-                    {{/each}}
-                </select>
-            </div>
-            {{/each}}
-        {{/with}}
-    <!-- <p><input type="submit" value="Save"></p> -->
-    </form>
+    <!-- <h2>International questions</h2> -->
+    <!-- <form role="form" id="international&#45;key" accept&#45;charset="utf&#45;8"> -->
+    <!--     {{#with internationalQuestions}} -->
+    <!--     {{#each header}} -->
+    <!--     <div class="form&#45;group"> -->
+    <!--         <label for="{{question}}">{{question}}</label> -->
+    <!--         <select class="international&#45;key" name="{{question}}" id="{{id}}"> -->
+    <!--             {{#each internationalOptions question=question mapping=../mapping}} -->
+    <!--             <option id="{{id}}" value="{{key}}" selected={{isSelected}}>{{key}}</option> -->
+    <!--             {{/each}} -->
+    <!--         </select> -->
+    <!--     </div> -->
+    <!--     {{/each}} -->
+    <!--     {{/with}} -->
+    <!--     <!&#45;&#45; <p><input type="submit" value="Save"></p> &#45;&#45;> -->
+    <!-- </form> -->
 </template>
 
 <template name="selectKeys">
+    <div class="form-group">
+        <label for="{{question}}">
+            <!-- TODO: add glyphicons to confirm -->
+            {{question}}
+            {{#if hasMapping}}
+                 <span class="glyphicon glyphicon-ok-sign"></span>
+                 (Ok)
+            {{else}}
+                 <span class="glyphicon glyphicon-info-sign"></span>
+                 (Guess)
+                 <a class="btn confirm-btn" data-question="{{question}}" data-type="{{../type}}">Confirm guess</a>
+            {{/if}}
+        </label>
+        <select class="local-key" name="{{question}}" id="{{id}}">
+            {{#each getOptions question=question mapping=../mapping requiredKeys=../requiredKeys}}
+                <option value="{{key}}" selected={{isSelected}}>{{key}}</option>
+            {{/each}}
+        </select>
+    </div>
 </template>
 
 <template name="Responses">
     <h2>Locals</h2>
-    {{#each locals}}
+    {{#each local}}
         {{> ResponseTable}}
     {{else}}
         <p>Use the textarea to add some data</p>
