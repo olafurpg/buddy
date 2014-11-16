@@ -10,9 +10,9 @@ accounts-google
 accounts-ui
 service-configuration
 iron:router
-bootstrap
 ui
 blaze
 jquery
 underscore
+mizzao:bootstrap-3
 

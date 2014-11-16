@@ -3,6 +3,7 @@ Setup = new Mongo.Collection("setup");
 QuestionKeys = new Mongo.Collection("questionKeys");
 QuestionImportances = new Mongo.Collection("questionImportances");
 Matchings = new Mongo.Collection("matchings");
+DEFAULT_IMPORTANCE = 50;
 
 function makeResponseTable (str) {
     var rows = str.split("\n");
@@ -73,13 +74,19 @@ function getQuestionImportances() {
     var qi = QuestionImportances.find({matchId: getId()}, {
         sort: {"timestamp": -1}
     }).fetch();
-    console.log(qi);
     var joined = _.object(_.map(qi, function(q) {
         return [q.question, {importance: q.importance, id: q._id}];
     }));
     return joined;
 }
 
+getAllResponses = function(type) {
+    var responses = {
+        local: getResponses("local"),
+        international: getResponses("international")
+    };
+    return responses;
+}
 getResponses = function(type) {
     var s = Setup.findOne({matchId: getId(), type: type}, {
         sort: {"timestamp": -1}
@@ -163,10 +170,7 @@ updateQuestionImportances = function() {
 updateResponsesSession = function() {
     console.log("on run");
     console.log(getResponses("local"));
-    var responses = {
-        local: getResponses("local"),
-        international: getResponses("international")
-    };
+    var responses = getAllResponses();
     if (_.indexOf(_.values(responses), undefined) !== -1) {
         // TODO: We may want to link towards setup
         return;
@@ -179,8 +183,10 @@ updateResponsesSession = function() {
         // TODO: We may want to link towards keys
         return;
     }
-    responses.local = makeObjFromMatrix(responses.local.data, mappings.local);
-    responses.international = makeObjFromMatrix(responses.international.data, mappings.international);
+    responses.local.data.responses = makeObjFromMatrix(responses.local.data, mappings.local);
+    responses.international.data.responses = makeObjFromMatrix(responses.international.data, mappings.international);
+    responses.local.data.mappings = mappings.local;
+    responses.international.data.mappings = mappings.international;
     Session.set("responses", responses);
 }
 
@@ -209,7 +215,6 @@ MatchingController = SetupController.extend({
         this.render("Match", {
             data: function() {
                 return {
-                    responses: Session.get("responses"),
                     questions: getQuestions()
                 };
             },
@@ -221,7 +226,7 @@ MatchingController = SetupController.extend({
     onBeforeAction: function() {
         updateResponsesSession();
         updateQuestionImportances();
-        var responses = Session.get("responses")
+        var responses = Session.get("responses");
         if (_.isUndefined(responses)) {
             this.render("GoToSetup");
         } else if (responses === "FIXME") {
@@ -393,31 +398,121 @@ if (Meteor.isClient) {
         return options;
     }
 
+    function getMatchings () {
+        return Matchings.find({matchId: getId()}, {
+            sort: {"timestamp": -1}
+        });
+    }
+
+    function getAvailableResponses() {
+        var matchings = getMatchings().fetch();
+        var responses = Session.get("responses");
+        var locals = responses.local.data.responses;
+        var internationals = responses.international.data.responses;
+
+        var localCounts = _.countBy(matchings, function(m) {
+            return m.local.email;
+        });
+        var internationalCounts = _.countBy(matchings, function(m) {
+            return m.international.email;
+        });
+
+        locals = _.map(locals, function(l) {
+            l.maxCapacity = capacity(l.willingness);
+            l.assignments = localCounts[l.email] || 0;
+            l.capacity = l.maxCapacity - l.assignments;
+            return l;
+        });
+
+        locals = _.filter(locals, function(l) {
+            return l.capacity > 0;
+        });
+
+        internationals = _.map(internationals, function(i) {
+            i.assignments = internationalCounts[i.email] || 0;
+            return i;
+        });
+
+        internationals = _.filter(internationals, function(i) {
+            return i.assignments === 0;
+        });
+
+        return {
+            local: locals,
+            international: internationals
+        }
+    }
+
+    function countAssignments (mathings, response) {
+        // body...
+    }
+
 
     Template.Responses.helpers({
         local: function() {
-            return Setup.find({matchId: getId(), type: "local"}, {
-                sort: {"timestamp": -1},
-                limit: 1
-            });
+            return getResponses("local");
         },
         international: function() {
-            return Setup.find({matchId: getId(), type: "international"}, {
-                sort: {"timestamp": -1},
-                limit: 1
-            });
+            return getResponses("international");
         },
         matchingId: function() {
             return getId();
         },
     });
 
+    Template.Match.helpers({
+        local: function() {
+            return Setup.findOne({matchId: getId(), type: "local"}, {
+                sort: {"timestamp": -1}
+            });
+        },
+        international: function() {
+            return Setup.findOne({matchId: getId(), type: "international"}, {
+                sort: {"timestamp": -1}
+            });
+        },
+        matchings: function() {
+            return getMatchings();
+        },
+        affinityScores: function() {
+            var availableResponses = getAvailableResponses();
+            var importances = getQuestionImportances();
+            var affinities = calculateAffinities(availableResponses.local, availableResponses.international, importances);
+            var local = _.map(_.zip(availableResponses.local, affinities), function(z) {
+                return {
+                    name: z[0].firstName,
+                    affinities: z[1]
+                };
+            })
+            return {
+                local: local,
+                international: availableResponses.international
+            };
+        }
+    });
+
+    Template.AffinityTable.helpers({
+        headers: function(obj) {
+            return _.keys(obj);
+        },
+        questionKeys: function(obj) {
+            console.log(_.values(obj));
+            return _.map(_.values(obj), function(mapping) {
+                return mapping.key;
+            });
+        },
+        cell: function(data) {
+            data = data.hash;
+            console.log(data);
+            // return data.response[data.mapping[data.key]];
+        }
+    });
     Template.QuestionImportance.helpers({
         getImportance: function(name) {
             var qi = Session.get("questionImportances")
             var importance = qi[name]
             // GIVE ME GET OR ELSE!!!!!!!!!!!!!!!!!
-            return _.isUndefined(importance) ? {importance: 50, id: null} : importance;
+            return _.isUndefined(importance) ? {importance: DEFAULT_IMPORTANCE, id: null} : importance;
         }
     });
 
@@ -426,9 +521,6 @@ if (Meteor.isClient) {
             var importance = parseInt(e.target.value);
             var id = e.target.getAttribute("data-id");
             var question = e.target.getAttribute("id");
-            console.log(importance);
-            console.log(question);
-            console.log(id);
             if (_.isNull(id)) {
                 QuestionImportances.insert({
                     timestamp: new Date().getTime(),
@@ -436,7 +528,6 @@ if (Meteor.isClient) {
                     question: question,
                     importance: importance
                 });
-                updateQuestionImportances();
             } else {
                 QuestionImportances.update({_id: id}, {
                     $set: {

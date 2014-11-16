@@ -7,18 +7,20 @@
 
 </body>
 <template name="ApplicationLayout">
-    <header>
-        <h1>{{title}}</h1>
-        <p><a href="/">Home</a></p>
-    </header>
+        <header>
+            <div class="container">
+                <h1>{{title}}</h1>
+                <p><a href="/">Home</a></p>
+            </div>
+        </header>
 
-    <article>
-        {{> yield}}
-    </article>
+        <div class="container">
+            {{> yield}}
+        </div>
 
-    <footer>
-        <p>This is a footer</p>
-    </footer>
+        <footer>
+            <p>This is a footer</p>
+        </footer>
 </template>
 
 <template name="Home">
@@ -119,21 +121,102 @@
 </template>
 
 <template name="Match">
-    <p>Responses</p>
-    {{#each responses.local}}
-        {{firstName}}
-    {{/each}}
-    {{#each questions}}
-        {{> QuestionImportance}}
-    {{/each}}
+    <div class="row">
+        <div class="col-sm-3">
+            <h2>Question importances</h2>
+            {{#each questions}}
+                {{> QuestionImportance}}
+            {{/each}}
+        </div>
+        <div class="col-sm-9">
+            <h2>Pairing</h2>
+            <div role="tabpanel">
+
+                <!-- Nav tabs -->
+                <ul class="nav nav-tabs" role="tablist">
+                    <li role="presentation" class="active"><a href="#matching" aria-controls="matching" role="tab" data-toggle="tab">Matchings</a></li>
+                    <li role="presentation"><a href="#local" aria-controls="local" role="tab" data-toggle="tab">Local</a></li>
+                    <li role="presentation"><a href="#international" aria-controls="international" role="tab" data-toggle="tab">International</a></li>
+                    <li role="presentation"><a href="#affinity" aria-controls="affinity" role="tab" data-toggle="tab">Affinity</a></li>
+                </ul>
+
+                <!-- Tab panes -->
+                <div class="tab-content">
+                    <div role="tabpanel" class="tab-pane active" id="matching">
+                        {{#with matchings}}
+                            {{> ResponseTable}}
+                        {{/with}}
+                    </div>
+                        <div role="tabpanel" class="tab-pane" id="local">
+                            {{#with local}}
+                                {{> ResponseTable}}
+                            {{/with}}
+                        </div>
+                        <div role="tabpanel" class="tab-pane" id="international">
+                            {{#with international}}
+                                {{> ResponseTable}}
+                            {{/with}}
+                        </div>
+                    <div role="tabpanel" class="tab-pane" id="affinity">
+                        {{#with affinityScores}}
+                            {{> AffinityTable}}
+                        {{/with}}
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</template>
+
+<template name="AffinityTable">
+    <div class="table-responsive">
+        <table class="table table-condensed">
+            <thead>
+                <!-- Top left cell will be empty -->
+                <tr></tr>
+                <tr>
+                    {{#each international}}
+                        <th>{{firstName}}</th>
+                    {{/each}}
+                </tr>
+            </thead>
+            <tbody>
+                {{#each local}}
+                    <tr>
+                        <td>{{name}}</td>
+                        {{#each affinities}}
+                        <td>{{this}}</td>
+                        {{/each}}
+                    </tr>
+                {{/each}}
+            </tbody>
+        </table>
+    </div>
+</template>
+
+<template name="Matching">
+    <p>Matching</p>
 </template>
 
 <template name="QuestionImportance">
-    <label for={{name}}>{{name}}</label>
-    {{#with getImportance name}}
-        <input type=range min=0 max=100 value={{importance}} class="importance-slider" id={{../name}} data-id={{id}} step=1>
-        <output for=fader id=volume>{{importance}}</output>
-    {{/with}}
+<form class="form-horizontal" role="form">
+    <div class="form-group">
+        <div class="row">
+            <label for={{name}}>{{name}}</label>
+        </div>
+        <div class="row">
+            {{#with getImportance name}}
+                <div class="col-sm-10">
+                    <input type=range min=0 max=100 value={{importance}} class="importance-slider" id={{../name}} data-id={{id}} step=1>
+                </div>
+                <div class="col-sm-2">
+                    {{importance}}
+                </div>
+            {{/with}}
+        </div>
+    </div>
+</form>
 </template>
 
 <template name="GoToSetup">

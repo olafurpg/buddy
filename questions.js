@@ -54,15 +54,15 @@ function getQuestionImportances() {
 // Returns integer value: high value == high affinity
 function affinity(A, B, questions, qi) {
     var affinity = 0;
-    //  Logger.log("Calculating affinity(%s, %s)", A.firstName, B.firstName);
+    //  console.log("Calculating affinity(%s, %s)", A.firstName, B.firstName);
     for (var i = 0; i < questions.length; i++) {
         var question = questions[i];
         var result = Math.round(question.importance(qi) * question.question(A, B, qi));
         if (result === undefined || isNaN(result)) {
-            Logger.log("Invalid question: " + question.name);
+            console.log("Invalid question: " + question.name);
             continue;
         }
-        //    Logger.log("%s: %s", question.name, result);
+        //    console.log("%s: %s", question.name, result);
         affinity += result;
     }
     // Shouldn't happen, but, you know
@@ -129,6 +129,7 @@ function genderQuestion() {
     };
 }
 
+// TODO: Make questions classes to remove redundant parseInt
 // Age Question
 function ageQuestion() {
     return {
@@ -139,11 +140,18 @@ function ageQuestion() {
         question: function (A, B) {
             var maxDiff = 5,
             maxSquared = maxDiff * maxDiff;
+            var lAge = parseInt(A.age);
+            var iAge = parseInt(B.age);
+            if (isNaN(lAge) || isNaN(iAge)) {
+                console.log("WARNING: unable to parse age for responses " + JSON.stringify(A) +  JSON.stringify(B));
+                return 0;
+            }
 
-            return (maxSquared - Math.pow(Math.min(Math.abs(A.age - B.age), maxDiff), 2)) / maxSquared;
+            var result = (maxSquared - Math.pow(Math.min(Math.abs(lAge - iAge), maxDiff), 2)) / maxSquared;
+            return result;
         },
         isBad: function (A, B) {
-            return Math.abs(A.age - B.age) > 4;
+            return Math.abs(parseInt(A.age) - parseInt(B.age)) > 4;
         },
         requires: function() {
             return {
@@ -163,7 +171,7 @@ function ageQuestion() {
             ],
             data: function(A, B) {
                 return [
-                    Math.abs(A.age - B.age),
+                    Math.abs(parseInt(A.age) - parseInt(B.age)),
                     A.age,
                     B.age
                 ];
@@ -196,7 +204,7 @@ function countryPreferenceQuestion() {
             }
         },
         isBad: function (A, B) {
-            //      Logger.log("Is bad: %s %s", A, B);
+            //      console.log("Is bad: %s %s", A, B);
             return !gotPreferredCountry(A, B);
         },
         requires: function() {
@@ -305,7 +313,7 @@ function testScope() {
     }
     return {
         test: function() {
-            Logger.log(foo());
+            console.log(foo());
         }
     }
 }
@@ -372,11 +380,11 @@ function interestQuestion() {
             return qi.interests;
         },
         question: function (A, B) {
-            //      Logger.log(A.interest);
+            //      console.log(A.interest);
             var score = 0;
             for (var key in A.interest) {
                 var result = interest2(A.interest[key], B.interest[key]);
-                //        Logger.log(key + ": " + result);
+                //        console.log(key + ": " + result);
                 score += result;
             }
             return score;
@@ -494,7 +502,7 @@ function motivationQuestion() {
         importance: function(qi) {
             return qi.motivation;
         },
-        question: function(A, B, qi) {
+        question: function(A, B) {
             var q;
             switch (A.motivation) {
                 case "Practice my language skills":
@@ -509,7 +517,7 @@ function motivationQuestion() {
                 default: // we ignore this question
                     q = appendixQuestion();
             }
-            return q.question(A, B) * q.importance(qi);
+            return q.question(A, B);
         },
         requires: function() {
             return {
@@ -599,12 +607,11 @@ function testInterestQuestion() {
     var locals = getSheetResponsesByName("Locals");
     var internationals = getSheetResponsesByName("Internationals");
     var result = interestQuestion().question(locals[0], internationals[1]);
-    Logger.log(result);
 }
 
 
 // For now, we will have to do with the following questions
-function capacity(response) {
+capacity = function(response) {
     switch (response) {
         case "Cancelled":
             return 0;
@@ -629,7 +636,6 @@ function gotPreferredCountry(A, B) {
     if (country == "Other") {
         return true;
     }
-    //  Logger.log(A[q.pref1] + "  " + A[q.pref2] + " " + A[q.pref3] + " + " + country);
     if (noPref(A.pref1) || A.pref1 == country) return true;
     if (noPref(A.pref2) || A.pref2 == country) return true;
     if (A.pref3 == country) return true;
@@ -648,7 +654,6 @@ function arrivalTest() {
     var at = internationals[2][q.arrivalTime];
     var arriving = new Date(at);
     var today = new Date();
-    Logger.log(daysFromNow(arriving, today));
 }
 
 
@@ -690,10 +695,10 @@ function studyTest() {
     var b = "Phd";
     var c = undefined;
     if (c || c) {
-        Logger.log("Undefined");
+        console.log("Undefined");
     }
-    Logger.log(getStudyLevel(a) + "  " + getStudyLevel(b));
-    Logger.log(studyLevel(a, b));
+    console.log(getStudyLevel(a) + "  " + getStudyLevel(b));
+    console.log(studyLevel(a, b));
 }
 
 function getLangs(A) {
@@ -715,15 +720,15 @@ function language(A, B) {
     if (!aLangs || !bLangs) { // either A or B did not answer question
         return 0;
     }
-    //  Logger.log(aLangs);
-    //  Logger.log(bLangs);
+    //  console.log(aLangs);
+    //  console.log(bLangs);
     var score = 0; // 1 point for ever same language spoken
 
     //  Iterate through all pairs of langages
     for (var i = 0; i < aLangs.length; i++) {
         if (bLangs.indexOf(aLangs[i]) !== -1) { // both speak same language
             score = score + 1;
-            //      Logger.log(aLangs[i]);
+            //      console.log(aLangs[i]);
         }
     }
     return score;
@@ -743,7 +748,7 @@ function interestRate2(A) {
 }
 
 function interest2(A, B) {
-    //  Logger.log(A + "  " + B);
+    //  console.log(A + "  " + B);
     var aRate = interestRate2(A);
     var bRate = interestRate2(B);
     if (!aRate || !bRate) {
@@ -757,7 +762,7 @@ function interest2(A, B) {
 function languageTest() {
     var a = "English, Finnish, German, Spanish, Swedish";
     var b = "Chinese (Mandarin), Danish, English, German, Icelandic, Swedish";
-    Logger.log(language(a, b)); // Returns 3
+    console.log(language(a, b)); // Returns 3
 }
 
 // Deprecated, see @interestRate2
@@ -780,7 +785,7 @@ function interestRate(A) {
 
 // Deprecated, see @interest2
 function interest(A, B) {
-    //  Logger.log(A + "  " + B);
+    //  console.log(A + "  " + B);
     var aRate = interestRate(A);
     var bRate = interestRate(B);
     if (!aRate || !bRate) {
@@ -795,7 +800,7 @@ function interestTest() {
     var a = "I hate it";
     var b = "I love it";
     var c = "It's alright";
-    Logger.log(interest(a, c));
+    console.log(interest(a, c));
 }
 
 // Returns 1 if the local buddy prefers an exchange buddy from
@@ -807,7 +812,7 @@ function preferenceTest() {
     var aPrefers = "Denmark";
     var bComesFrom = "Denmark";
     var cComesFrom = "Sweden";
-    Logger.log(preference(aPrefers, cComesFrom));
+    console.log(preference(aPrefers, cComesFrom));
 }
 
 
