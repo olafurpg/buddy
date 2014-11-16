@@ -391,7 +391,7 @@ function getObject(ids, o) {
  *  Should have O(n) operations, where n is 
  *    n = MIN(a.length(), b.length())
  */
-function intersect(a, b)
+intersect = function(a, b)
 {
   var ai=0, bi=0;
   var result = new Array();
@@ -413,7 +413,7 @@ function intersect(a, b)
 
 // TODO: remove slice(20) if method is 
 //       used elsewhere than in interest.repr
-function intersectObjectsOnValue(value, A, B) {
+intersectObjectsOnValue = function(value, A, B) {
   var intersection = [];
   for (var key in A.interest) {
     if (A.interest.hasOwnProperty(key) && B.interest.hasOwnProperty(key)) {
@@ -427,7 +427,7 @@ function intersectObjectsOnValue(value, A, B) {
 
 // TODO: remove slice(20) if method is 
 //       used elsewhere than in interest.repr
-function unionObjectsOnValue(value, A, B) {
+unionObjectsOnValue = function(value, A, B) {
   var intersection = [];
   for (var key in A.interest) {
     if (A.interest.hasOwnProperty(key) && B.interest.hasOwnProperty(key)) {
@@ -441,7 +441,7 @@ function unionObjectsOnValue(value, A, B) {
 
 // TODO; can you make a prettier palette?
 //       Try yourself: http://color.hailpixel.com/
-function getColors() {
+getColors = function() {
   return [
     "#62a6cb",
     "#c27447",

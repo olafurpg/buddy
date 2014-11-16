@@ -474,10 +474,54 @@ if (Meteor.isClient) {
         matchings: function() {
             return getMatchings();
         },
+        proposals: function() {
+            var matchData = Session.get("matchData");
+            if (_.isUndefined(matchData)) return;
+            var flow = maxCostBipartiteMatching(matchData.affinities);
+            var locals = matchData.responses.local;
+            var internationals = matchData.responses.international;
+            // TODO: Figure out why some ids are too large
+            flow = _.filter(flow, function(f) {
+                var local = f[0];
+                var international = f[1];
+                return (local < locals.length && international < internationals.length)
+            });
+            var questions = getQuestions();
+            var header = _.flatten(_.map(questions, function(q) {
+                return q.repr.header;
+            }));
+            var responses = _.map(flow, function(f) {
+                var local = locals[f[0]];
+                var international = internationals[f[1]];
+                console.log(local);
+                console.log(f[1]);
+                console.log(international);
+                console.log(f[0]);
+                return _.flatten(_.map(questions, function(q) {
+                    return q.repr.data(local, international);
+                }));
+            });
+            console.log(header);
+            console.log(responses);
+            return {
+                data: {
+                    header: header,
+                    responses: responses
+                }
+            };
+        },
         affinityScores: function() {
+            // TODO: Add transponse
+            // TODO: Add sorting on columns
             var availableResponses = getAvailableResponses();
             var importances = getQuestionImportances();
+            console.log(importances);
             var affinities = calculateAffinities(availableResponses.local, availableResponses.international, importances);
+            var matchData = {
+                responses: availableResponses,
+                affinities: affinities
+            };
+            Session.set("matchData", matchData);
             var local = _.map(_.zip(availableResponses.local, affinities), function(z) {
                 return {
                     name: z[0].firstName,

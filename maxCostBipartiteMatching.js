@@ -116,7 +116,7 @@ function MinCostMatching(cost, Lmate, Rmate) {
   return value;
 }
 
-function maxCostBipartiteMatching(adj_matrix) {
+maxCostBipartiteMatching = function(adj_matrix) {
   var VERYSMALlCONSTANT = -1000000000;
   var n = adj_matrix.length,
       m = adj_matrix[0].length;

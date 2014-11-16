@@ -326,6 +326,7 @@ function testFoo() {
 function languageQuestion() {
     var languagesInCommon = function(A, B) {
         if (A && B) {
+            console.log(A);
             var inCommon = intersect(
                 A.languages.split(", "),
                 B.languages.split(", ")
@@ -357,7 +358,7 @@ function languageQuestion() {
                     "languages"
                 ],
                 international: [
-                    "langages"
+                    "languages"
                 ]
             };
         },

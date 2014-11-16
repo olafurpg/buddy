@@ -134,7 +134,8 @@
 
                 <!-- Nav tabs -->
                 <ul class="nav nav-tabs" role="tablist">
-                    <li role="presentation" class="active"><a href="#matching" aria-controls="matching" role="tab" data-toggle="tab">Matchings</a></li>
+                    <li role="presentation" class="active"><a href="#proposals" aria-controls="proposals" role="tab" data-toggle="tab">Proposals</a></li>
+                    <li role="presentation" class=""><a href="#matching" aria-controls="matching" role="tab" data-toggle="tab">Matchings</a></li>
                     <li role="presentation"><a href="#local" aria-controls="local" role="tab" data-toggle="tab">Local</a></li>
                     <li role="presentation"><a href="#international" aria-controls="international" role="tab" data-toggle="tab">International</a></li>
                     <li role="presentation"><a href="#affinity" aria-controls="affinity" role="tab" data-toggle="tab">Affinity</a></li>
@@ -142,7 +143,12 @@
 
                 <!-- Tab panes -->
                 <div class="tab-content">
-                    <div role="tabpanel" class="tab-pane active" id="matching">
+                    <div role="tabpanel" class="tab-pane active" id="proposals">
+                        {{#with proposals}}
+                            {{> ResponseTable}}
+                        {{/with}}
+                    </div>
+                    <div role="tabpanel" class="tab-pane" id="matching">
                         {{#with matchings}}
                             {{> ResponseTable}}
                         {{/with}}
@@ -173,9 +179,9 @@
     <div class="table-responsive">
         <table class="table table-condensed">
             <thead>
-                <!-- Top left cell will be empty -->
-                <tr></tr>
                 <tr>
+                    <!-- Top left cell will be empty -->
+                    <th></th>
                     {{#each international}}
                         <th>{{firstName}}</th>
                     {{/each}}
@@ -186,7 +192,7 @@
                     <tr>
                         <td>{{name}}</td>
                         {{#each affinities}}
-                        <td>{{this}}</td>
+                            <td>{{this}}</td>
                         {{/each}}
                     </tr>
                 {{/each}}
