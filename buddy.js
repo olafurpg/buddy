@@ -172,44 +172,46 @@ if (Meteor.isClient) {
             return "/matching?m=" + getId();
         },
         localQuestions: function() {
-            console.log(getResponses("locals"));
-            return getResponses("locals").data.header;
+            var header = getResponses("locals").data.header;
+            var mapping = getMappings("local", header);
+            return {header: header, mapping: mapping};
         },
         internationalQuestions: function() {
-            return getResponses("internationals").data.header;
+            var header = getResponses("internationals").data.header;
+            var mapping = getMappings("international", header);
+            return {header: header, mapping: mapping};
         },
-        localOptions: function(question) {
+        localOptions: function(data) {
+            console.log(data);
             // TODO: cache selected keys
             // TODO: cache requiredKeys
-            var mapping = getMappings("local");
             var requiredKeys = getVariables();
-            return getOptions(question, mapping, requiredKeys.local);
+            return getOptions(data.question, data.mapping, requiredKeys.local);
         },
-        internationalOptions: function(question) {
-            var mapping = getMappings("international");
+        internationalOptions: function(data) {
             var requiredKeys = getVariables();
-            return getOptions(question, mapping, requiredKeys.international);
+            return getOptions(data.question, data.mapping, requiredKeys.international);
         },
         questions: function() {
             return "";
         }
     });
     Template.Keys.events({
-        "submit form": function(e) {
-            e.preventDefault();
-            var type = e.target.getAttribute("id");
-            console.log(type);
-            var keyValues = $("." + type).map(function(i, s) {
-                return [[s.getAttribute('name'), s.value]];
-            }).get();
-            console.log(keyValues);
+        "change select": function(e) {
+            var question = e.target.getAttribute("name");
+            var key = e.target.value;
+            var type = (e.target.classList.indexOf("local-key") === -1) ? "international" : "local";
             var millis = new Date().getTime();
             keyValues = _.object(keyValues);
-            QuestionKeys.insert({
-                timestamp: millis,
+            QuestionKeys.upsert({
+                type: getId(),
                 matchId: getId(),
-                type: (type === "local-key") ? "local" : "international",
-                data: keyValues
+                question: question
+            }, {
+                question: question,
+                key: key,
+                timestamp: millis,
+                type: type
             });
         }
     });
@@ -241,7 +243,7 @@ if (Meteor.isClient) {
         return options;
     }
 
-    function getResponses (type) {
+    function getResponses (type, header) {
         var s = Setup.find({matchId: getId(), type: type}, {
             sort: {"timestamp": -1},
             limit: 1
@@ -249,10 +251,11 @@ if (Meteor.isClient) {
         return s;
     }
 
-    function getMappings (type) {
+    function getMappings(type, header) {
+
         return QuestionKeys.find({matchId: getId(), type: type}, {
             sort: {"timestamp": -1},
-            limit: 1
+            question: { $in: header }
         }).fetch()[0];
     }
 
