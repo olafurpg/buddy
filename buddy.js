@@ -145,11 +145,11 @@ MatchingController = ApplicationController.extend({
 
 if (Meteor.isClient) {
     Template.New.events({
-        "click #new-internationals": function() {
-            var internationals = $("textarea[name='internationals']")[0].value;
-            internationals = makeResponseTable(internationals);
+        "click #new-international": function() {
+            var international = $("textarea[name='international']")[0].value;
+            international = makeResponseTable(international);
             var millis = new Date().getTime();
-            Setup.insert({timestamp: millis, matchId: getId(), type: "internationals", data: internationals});
+            Setup.insert({timestamp: millis, matchId: getId(), type: "international", data: international});
         },
         "click #new-local": function() {
             var local = $("textarea[name='local']")[0].value;
@@ -172,50 +172,40 @@ if (Meteor.isClient) {
             return "/matching?m=" + getId();
         },
         localQuestions: function() {
-            var header = getResponses("local");
-            header = (header !== undefined) ? header.data.header : header;
-            var mapping = getMappings("local");
-            header = _.map(header, function(h) {
-                // console.log(h);
-                var hasMapping = _.isObject(mapping[h]);
-                var id = hasMapping ? mapping[h].id : "";
-                // console.log(id);
-                var classList = hasMapping ? "glyphicon glyphicon-ok-sign" : "glyphicon glyphicon-info-sign";
-                return {question: h, hasMapping: hasMapping, classList: classList, id: id};
-            });
-            console.log(mapping["Timestamp"]);
-            console.log(header);
-            var requiredKeys = getVariables();
-            return {type: "local", header: header, mapping: mapping, requiredKeys: requiredKeys.local};
+            console.log("hello!!");
+            return getQuestions("local");
         },
-        // internationalQuestions: function() {
-        //     var header = getResponses("internationals");
-        //     header = (header !== undefined) ? header.data.header : header;
-        //     var mapping = getMappings("international");
-        //     return {header: header, mapping: mapping};
-        // },
-        // localOptions: function(data) {
-        //     data = data.hash;
-        //     console.log(data);
-        //     // TODO: cache selected keys
-        //     // TODO: cache requiredKeys
-        //     return getOptions(data.question, data.mapping, requiredKeys.local);
-        // },
-        // internationalOptions: function(data) {
-        //     data = data.hash;
-        //     var requiredKeys = getVariables();
-        //     var opts = getOptions(data.question, data.mapping, requiredKeys.international);
-        //     return opts;
-        // },
+        internationalQuestions: function() {
+            return getQuestions("international");
+        },
         questions: function() {
             return "";
         }
     });
 
+    function getQuestions (type) {
+        var header = getResponses(type);
+        header = (header !== undefined) ? header.data.header : header;
+        var mapping = getMappings(type);
+        header = _.map(header, function(h) {
+            // console.log(h);
+            var hasMapping = _.isObject(mapping[h]);
+            var id = hasMapping ? mapping[h].id : "";
+            // console.log(id);
+            var classList = hasMapping ? "glyphicon glyphicon-ok-sign" : "glyphicon glyphicon-info-sign";
+            return {question: h, hasMapping: hasMapping, classList: classList, id: id};
+        });
+        console.log(mapping["Timestamp"]);
+        console.log(header);
+        var requiredKeys = getVariables();
+        return {type: type, header: header, mapping: mapping, requiredKeys: requiredKeys[type]};
+    }
+
 
     Template.selectKeys.helpers({
         getOptions: function(data) {
             data = data.hash;
+            console.log(data);
             var opts = getOptions(data.question, data.mapping, data.requiredKeys);
             return opts;
         },
@@ -322,8 +312,8 @@ if (Meteor.isClient) {
                 limit: 1
             });
         },
-        internationals: function() {
-            return Setup.find({matchId: getId(), type: "internationals"}, {
+        international: function() {
+            return Setup.find({matchId: getId(), type: "international"}, {
                 sort: {"timestamp": -1},
                 limit: 1
             });

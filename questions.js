@@ -550,6 +550,8 @@ function appendixQuestion() {
                 local: [
                     "firstName",
                     "lastName",
+                    "comments",
+                    "timestamp",
                     "email",
                     "facebook",
                     "phone"
@@ -557,6 +559,8 @@ function appendixQuestion() {
                 international: [
                     "firstName",
                     "lastName",
+                    "timestamp",
+                    "comments",
                     "email",
                     "facebook",
                     "phone"
